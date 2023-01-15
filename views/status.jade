@@ -1,0 +1,29 @@
+html
+    head
+        link(href='status.css', rel='stylesheet')
+        title TON-ACCESS Status Page
+    body
+        h2 TON-ACCESS Status Page
+        .time.border time: #{new Date(succesTime).toLocaleString()}
+
+        .header
+            .box.border Node
+            each column in columns
+                .box.border #{column}
+        each node in nodes
+            .node
+                .info.box.border(class= node.Healthy == 1? "healthy":"down")                     
+                    .edgeName #{node.edgeName}
+                    div #{node.displayName}
+                    div Edge-Health: #{node.Healthy}
+                    div #{node.Ip}
+                each unit in node.units
+                    .unit.box.border(class= unit.status === 200? "healthy":"down") 
+                        a(href="#{unit.url}" target="_blank" )                         
+                            if unit.error
+                                div error: #{unit.error}
+                            else
+                                div status: #{unit.status}    
+                                div(class= unit.elapsedMS > 470? "slow":"ok") elapsed : #{unit.elapsedMS} ms
+                                div seqno: #{unit.seqno}
+        
