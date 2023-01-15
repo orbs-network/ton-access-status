@@ -2,9 +2,7 @@ const express = require('express')
 const app = express()
 const status = require('./status');
 
-
-const port = 3000
-
+const port = process.env.PORT || 3000;
 
 //set view engine
 app.set('views', './views');
