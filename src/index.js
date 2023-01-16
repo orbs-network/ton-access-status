@@ -2,7 +2,8 @@ const express = require('express')
 const app = express()
 const status = require('./status');
 
-const port = process.env.MY_PORT || 3000;
+const port = process.env.PORT || 8080;
+//const port = 8080;
 
 //set view engine
 app.set('views', './views');
