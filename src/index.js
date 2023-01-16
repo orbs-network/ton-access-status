@@ -2,7 +2,7 @@ const express = require('express')
 const app = express()
 const status = require('./status');
 
-const port = process.env.PORT || 3000;
+const port = process.env.MY_PORT || 3000;
 
 //set view engine
 app.set('views', './views');
@@ -22,5 +22,5 @@ app.get('/status', function (req, res) {
 status.monitor();
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
+    console.log(`Example app listening on port ${port}`);
 })
