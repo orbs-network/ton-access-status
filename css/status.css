@@ -166,6 +166,7 @@ h1 {
 .box {
     width: calc(100% / 6 - 10px);
     font-size: smaller;
+    line-height: 20px;
     padding: 8pt;
     margin: 2pt;
 }
@@ -210,4 +211,8 @@ a:active {
     margin: 2pt;
     display: inline-block;
 
+}
+
+.info {
+    padding: 5pt;
 }

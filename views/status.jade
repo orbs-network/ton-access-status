@@ -5,8 +5,7 @@ html
     body
         .cont
             h1 ORBS TON-Access Status Page
-            .time.border time: #{new Date(succesTime).toLocaleString()}
-
+            
             .header
                 .box.border Node
                 each column in columns
@@ -28,3 +27,5 @@ html
                                     div(class= unit.elapsedMS > 470? "slow":"ok") elapsed : #{unit.elapsedMS} ms
                                     div seqno: #{unit.seqno}
             
+            div.info Update time: #{new Date(succesTime).toLocaleString()}
+            div.info Update duration: #{updateDuration}

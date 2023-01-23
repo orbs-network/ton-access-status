@@ -17,6 +17,10 @@ const edgeNames = {
     "b21c74F113C504144d25BEC6FFA5089ED79a2d6f": "dls_2"
 }
 
+// axiousTimeout
+const INTERVAL = 15 * 1000;
+const AXIOS_TIMEOUT = 1500;
+
 class Status {
     constructor(height, width) {
         this.data = {}
@@ -28,7 +32,7 @@ class Status {
     async monitor() {
         try {
             await this.update();
-            setTimeout(this.monitor.bind(this), 1000 * 60);
+            setTimeout(this.monitor.bind(this), INTERVAL);
         } catch (e) {
             this.data.error = e.message;
             this.data.errorTime = Date.now();
@@ -46,13 +50,39 @@ class Status {
             url: url,
             error: null
         }
+        // const resp = await axios.get(url, { timeout: AXIOS_TIMEOUT }).catch(function (thrown) {
 
+        //     if (thrown.code === 'ECONNABORTED') {
+        //         console.log('Request timeout', url, AXIOS_TIMEOUT);
+        //         unit.error = `timeout ${AXIOS_TIMEOUT} ms`;
+        //     } else {
+        //         // handle error
+        //         console.error('Request error', thrown.message);
+        //         unit.error = thrown.message;
+        //     }
+        // })
+
+        let resp;
         try {
-            const resp = await axios.get(url);
-            var endTime = performance.now();
+            resp = await axios.get(url, { timeout: AXIOS_TIMEOUT });
+        }
+        catch (err) {
+            if (err.code === 'ECONNABORTED') {
+                console.log('Request timeout', url, AXIOS_TIMEOUT);
+                unit.error = `timeout ${AXIOS_TIMEOUT} ms`;
+            } else {
+                // handle error
+                if (url.indexOf('ton-not-exist') == -1) { // filter out purposely error
+                    console.error('Request error', err.message, url);
+                }
+                unit.error = err.message;
+            }
+        }
+        var endTime = performance.now();
+        unit.elapsedMS = Math.round(endTime - startTime);
+        if (resp) {
             unit.status = resp.status;
             unit.data = resp.data;
-            unit.elapsedMS = Math.round(endTime - startTime);
 
             // per protocol valid data
             if (name.slice(0, 2) === 'v2') {
@@ -61,12 +91,14 @@ class Status {
             else if (name.slice(0, 2) === 'v4') {
                 unit.seqno = unit.data.last.seqno;
             }
-        } catch (e) {
-            unit.error = e.message;
         }
-
         return unit;
     }
+    //////////////////////////////////////////////////
+    // async updateNodeUnits(node, units) {
+    //     //updateToncenter
+    // }
+    //////////////////////////////////////////////////
     async updateNodeUnits(node, units) {
         let calls = [];
         for (const name in units) {
@@ -82,15 +114,18 @@ class Status {
             console.error(e);
         }
     }
-
+    //////////////////////////////////////////////////
     async update() {
         // prevent double entrance
-        if (this.updateing)
+        if (this.updateing) {
+            console.log('update already in progress');
             return;
+        }
 
+        var startTime = performance.now();
         this.updateing = true;
 
-        console.log("==== start update status ====")
+        console.time("update status");
         const data = {
             succesTime: Date.now(),
             columns: Object.keys(units)
@@ -100,20 +135,31 @@ class Status {
         data.nodes = resp.data;
 
         const calls = [];
+
+        // add ton access nodes
         for (const node of data.nodes) {
-            node.edgeName = edgeNames[node.Name] || "unkown";
+            node.edgeName = node.BackendName || edgeNames[node.Name] || "unknown";
             node.displayName = node.Name.slice(0, 4) + '...' + node.Name.slice(-4);
             calls.push(this.updateNodeUnits(node, units));
         };
+
+        // add toncenter call for reference
+        //calls.push(this.updateToncenter());
+
         try {
             await Promise.all(calls);
-            this.data = data;
-            console.log("==== end  update status ====")
         } catch (e) {
             console.error(e);
+            data.error = 'promiseAll error' + e.message;
         }
 
+        console.timeEnd("update status");
+        var endTime = performance.now();
+        data.updateDuration = Math.round(endTime - startTime);
         this.updateing = false;
+
+        // return val
+        this.data = data;
     }
 }
 
