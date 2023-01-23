@@ -18,7 +18,7 @@ const edgeNames = {
 }
 
 // axiousTimeout
-const INTERVAL = 15 * 1000;
+const INTERVAL = 60 * 1000;
 const AXIOS_TIMEOUT = 1500;
 
 class Status {
