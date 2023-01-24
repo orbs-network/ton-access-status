@@ -12,18 +12,13 @@ app.set("view engine", "jade")
 app.use(express.static('css'));
 
 app.get('/', async function (req, res) {
-    await status.update();
+    status.needUpdate = true;
     res.render('status', status.data);
 });
 
-app.get('/update', async function (req, res) {
-    // refresh every time
-    await status.update();
-    res.send('update completed');
-});
 
 app.get('/json', async function (req, res) {
-    await status.update();
+    status.needUpdate = true;
     res.json(status.data);
 });
 

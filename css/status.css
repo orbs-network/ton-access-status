@@ -188,8 +188,11 @@ h1 {
 }
 
 .slow {
-    color: red;
-    font-weight: bold;
+    color: #A33;
+}
+
+.fast {
+    color: #3A3;
 }
 
 a:link,

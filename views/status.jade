@@ -24,7 +24,8 @@ html
                                     div error: #{unit.error}
                                 else
                                     div status: #{unit.status}    
-                                    div(class= unit.elapsedMS > 470? "slow":"ok") elapsed : #{unit.elapsedMS} ms
+                                    div(class= unit.elapsedMS > 470? "slow":"ok") elapsed : #{unit.elapsedMS} ms                                    
+                                    div(class= unit.benchmarkMS > 0? "slow":"fast") benchmark : #{unit.benchmarkMS} ms
                                     div seqno: #{unit.seqno}
             
             div.info Update time: #{new Date(succesTime).toLocaleString()}

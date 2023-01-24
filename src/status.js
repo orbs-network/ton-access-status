@@ -8,6 +8,12 @@ const units = {
     "v4-testnet": "/1/testnet/ton-api-v4/block/latest",
     "ton-not-exist": "/1/testnet/ton-not-exist/block/latest"
 }
+const benchmark = {
+    "v2-mainnet": { url: "https://toncenter.com/api/v2/getMasterchainInfo" },
+    "v2-testnet": { url: "https://testnet.toncenter.com/api/v2/getMasterchainInfo" },
+    "v4-mainnet": { url: "https://mainnet-v4.tonhubapi.com/block/latest" },
+    "v4-testnet": { url: "https://testnet-v4.tonhubapi.com/block/latest" }
+}
 
 const edgeNames = {
     "3847c20C2854E83765d585B86498eFcC7Fec6a46": "be_1",
@@ -18,28 +24,62 @@ const edgeNames = {
 }
 
 // axiousTimeout
-const INTERVAL = 60 * 1000;
+//const INTERVAL = 60 * 1000;
 const AXIOS_TIMEOUT = 1500;
 
 class Status {
     constructor(height, width) {
         this.data = {}
-        this.updateing = false;
+        //this.updateing = false;
+        this.needUpdate = false;
     }
+    //////////////////////////////////////////////////
     async start() {
-        await this.monitor();
+        //await this.monitor();
+        await this.benchmarkTick();
+        this.updateSetLoop();
+        this.updateGetLoop();
     }
-    async monitor() {
-        try {
-            await this.update();
-            setTimeout(this.monitor.bind(this), INTERVAL);
-        } catch (e) {
-            this.data.error = e.message;
-            this.data.errorTime = Date.now();
-            console.error(e);
-        }
+    //////////////////////////////////////////////////
+    // refresh benchmark every 5 minutes
+    async benchmarkTick() {
+        // now first
+        await this.updateBenchmark();
+        const interval = 5 * 60 * 1000
+        setInterval(async () => {
+            try {
+                await this.updateBenchmark();
+            } catch (e) {
+                console.error('benchmarkTick', e);
+            }
+        }, interval);
     }
-
+    //////////////////////////////////////////////////
+    updateSetLoop() {
+        const interval = 1 * 60 * 1000
+        this.needUpdate = true;
+        setInterval(() => {
+            this.needUpdate = true;
+        }, interval);
+    }
+    //////////////////////////////////////////////////
+    async updateGetLoop() {
+        setInterval(async () => {
+            //while (true) {        
+            if (this.needUpdate) {
+                try {
+                    this.needUpdate = false;
+                    await this.update();
+                }
+                catch (e) {
+                    console.error('updateLoop', e);
+                    this.data.error = e.message;
+                    this.data.errorTime = Date.now();
+                }
+            }
+        }, 1000);
+    }
+    //////////////////////////////////////////////////
     async updateUnit(node, name, suffix) {
         const url = HOST + '/' + node.Name + suffix;
 
@@ -50,21 +90,15 @@ class Status {
             url: url,
             error: null
         }
-        // const resp = await axios.get(url, { timeout: AXIOS_TIMEOUT }).catch(function (thrown) {
-
-        //     if (thrown.code === 'ECONNABORTED') {
-        //         console.log('Request timeout', url, AXIOS_TIMEOUT);
-        //         unit.error = `timeout ${AXIOS_TIMEOUT} ms`;
-        //     } else {
-        //         // handle error
-        //         console.error('Request error', thrown.message);
-        //         unit.error = thrown.message;
-        //     }
-        // })
 
         let resp;
         try {
             resp = await axios.get(url, { timeout: AXIOS_TIMEOUT });
+            // DEBUG
+            // if (url.indexOf('v4') > -1) {
+            //     console.log('url', url);
+            //     console.log(resp.data);
+            // }
         }
         catch (err) {
             if (err.code === 'ECONNABORTED') {
@@ -78,8 +112,16 @@ class Status {
                 unit.error = err.message;
             }
         }
+        // elapsed and benchmark
         var endTime = performance.now();
         unit.elapsedMS = Math.round(endTime - startTime);
+
+        // benchmark
+        if (benchmark[unit.name]?.elapsedMS) {
+            const benchmarkMS = benchmark[unit.name].elapsedMS;
+            unit.benchmarkMS = unit.elapsedMS - benchmarkMS;
+        }
+
         if (resp) {
             unit.status = resp.status;
             unit.data = resp.data;
@@ -95,18 +137,17 @@ class Status {
         return unit;
     }
     //////////////////////////////////////////////////
-    // async updateNodeUnits(node, units) {
-    //     //updateToncenter
-    // }
-    //////////////////////////////////////////////////
     async updateNodeUnits(node, units) {
         let calls = [];
+        //let results = [];
         for (const name in units) {
             calls.push(this.updateUnit(node, name, units[name]))
+            // serial impl
+            //const res = await this.updateUnit(node, name, units[name])
+            //results.push(res);
         }
         try {
-            const units = await Promise.all(calls);
-            node.units = units;
+            node.units = await Promise.all(calls);
             ///console.log(units)
             node.error = null;
         } catch (e) {
@@ -115,15 +156,37 @@ class Status {
         }
     }
     //////////////////////////////////////////////////
-    async update() {
-        // prevent double entrance
-        if (this.updateing) {
-            console.log('update already in progress');
-            return;
+    async updateBenchmarkProtocol(bm) {
+        const startTime = performance.now();
+        bm.elapsedMS = -1;
+        try {
+            await axios.get(bm.url, { timeout: AXIOS_TIMEOUT });
+            bm.elapsedMS = Math.round(performance.now() - startTime);
         }
-
+        catch (err) {
+            if (err.code === 'ECONNABORTED') {
+                console.log('Benchmark Request timeout', bm.url, AXIOS_TIMEOUT);
+                duration = Math.round(endTime - startTime);
+            } else {
+                console.error('Benchmark Request error', err.message, bm.url);
+            }
+        }
+    }
+    //////////////////////////////////////////////////
+    async updateBenchmark() {
+        console.time("updateBenchmark");
+        let calls = [];
+        for (const protocol in benchmark) {
+            calls.push(this.updateBenchmarkProtocol(benchmark[protocol]))
+            //await this.updateBenchmarkProtocol(benchmark[protocol]);
+        }
+        await Promise.all(calls);
+        console.timeEnd("updateBenchmark");
+    }
+    //////////////////////////////////////////////////
+    async update() {
+        console.log('------------update start')
         var startTime = performance.now();
-        this.updateing = true;
 
         console.time("update status");
         const data = {
@@ -131,7 +194,7 @@ class Status {
             columns: Object.keys(units)
         };
 
-        const resp = await axios.get(HOST + '/nodes');
+        const resp = await axios.get(HOST + '/nodes', { timeout: AXIOS_TIMEOUT });
         data.nodes = resp.data;
 
         const calls = [];
@@ -143,10 +206,8 @@ class Status {
             calls.push(this.updateNodeUnits(node, units));
         };
 
-        // add toncenter call for reference
-        //calls.push(this.updateToncenter());
-
         try {
+            //await Promise.allSettled(calls);
             await Promise.all(calls);
         } catch (e) {
             console.error(e);
