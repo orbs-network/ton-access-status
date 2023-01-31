@@ -13,7 +13,7 @@ html
             each node in nodes
                 .node
                     .info.box.border(class= node.Healthy == 1? "healthy":"down")                     
-                        .edgeName #{node.edgeName}
+                        .edgeName #{node.BackendName}
                         div #{node.displayName}
                         div Edge-Health: #{node.Healthy}
                         div #{node.Ip}
