@@ -220,7 +220,6 @@ class Status {
         for (const item of items.data) {
             this.beName2Id[item.item_key] = item.item_value;
         }
-        console.log(items);
 
         // get backends edge api
         const backends = await this.callEdgeApi(`version/${version.data.number}/backend`);
@@ -230,11 +229,10 @@ class Status {
                 "NodeId": this.beName2Id[backend.name],
                 "BackendName": backend.name,
                 "Ip": backend.address,
-                "Weight": backend.Weight,
+                "Weight": backend.weight,
                 "Healthy": "1"
             });
         }
-        console.log(nodes)
         return nodes;
     }
     //////////////////////////////////////////////////
