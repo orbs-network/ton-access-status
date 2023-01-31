@@ -15,24 +15,40 @@ const benchmark = {
     "v4-testnet": { url: "https://testnet-v4.tonhubapi.com/block/latest" }
 }
 
-const edgeNames = {
-    "3847c20C2854E83765d585B86498eFcC7Fec6a46": "be_1",
-    "19e116699fd6c7ad754a912af633aafec27cc456": "be_2",
-    "1cde611619e2a466c87a23b64870397436082895": "be_3",
-    "4d8be7F95Bd3F8B62C092Ab4D238bEE463E655EE": "dls_1",
-    "b21c74F113C504144d25BEC6FFA5089ED79a2d6f": "dls_2"
-}
+// const edgeNames = {
+//     "3847c20C2854E83765d585B86498eFcC7Fec6a46": "be_1",
+//     "19e116699fd6c7ad754a912af633aafec27cc456": "be_2",
+//     "1cde611619e2a466c87a23b64870397436082895": "be_3",
+//     "4d8be7F95Bd3F8B62C092Ab4D238bEE463E655EE": "dls_1",
+//     "b21c74F113C504144d25BEC6FFA5089ED79a2d6f": "dls_2"
+// }
+
+// const beName2ID = {
+//     "be1": "3847c20C2854E83765d585B86498eFcC7Fec6a46",
+//     "be2": "19e116699fd6c7ad754a912af633aafec27cc456",
+//     "be3": "1cde611619e2a466c87a23b64870397436082895",
+//     "dls1": "4d8be7F95Bd3F8B62C092Ab4D238bEE463E655EE",
+//     "dls2": "b21c74F113C504144d25BEC6FFA5089ED79a2d6f"
+// }
 
 // axiousTimeout
 //const INTERVAL = 60 * 1000;
 const AXIOS_TIMEOUT = 1500;
 
 class Status {
-    constructor(height, width) {
+    constructor() {
         this.data = {}
         //this.updateing = false;
         this.needUpdate = false;
+        this.edgeSvcUrl = `https://api.fastly.com/service/${process.env.FASTLY_SERVICE_ID}`;
+
+        this.edgeHeaders = {
+            'Fastly-Key': process.env.FASTLY_API_KEY,
+            'Accept': 'application/json'
+        }
+
     }
+
     //////////////////////////////////////////////////
     async start() {
         //await this.monitor();
@@ -81,7 +97,7 @@ class Status {
     }
     //////////////////////////////////////////////////
     async updateUnit(node, name, suffix) {
-        const url = HOST + '/' + node.Name + suffix;
+        const url = HOST + '/' + node.NodeId + suffix;
 
         var startTime = performance.now();
         let unit = {
@@ -184,6 +200,44 @@ class Status {
         console.timeEnd("updateBenchmark");
     }
     //////////////////////////////////////////////////
+    async callEdgeApi(method) {
+        const url = `${this.edgeSvcUrl}/${method}`;
+        return await axios.get(url, {
+            headers: this.edgeHeaders,
+            timeout: AXIOS_TIMEOUT
+        });
+    }
+    //////////////////////////////////////////////////
+    async getNodes() {
+        // get active version
+        const version = await this.callEdgeApi(`version/active`);
+        // get backend names
+        const table = await this.callEdgeApi(`version/${version.data.number}/dictionary/beName2Id`);
+        // get items
+        const items = await this.callEdgeApi(`dictionary/${table.data.id}/items`);
+        // populate
+        this.beName2Id = {}
+        for (const item of items.data) {
+            this.beName2Id[item.item_key] = item.item_value;
+        }
+        console.log(items);
+
+        // get backends edge api
+        const backends = await this.callEdgeApi(`version/${version.data.number}/backend`);
+        const nodes = [];
+        for (const backend of backends.data) {
+            nodes.push({
+                "NodeId": this.beName2Id[backend.name],
+                "BackendName": backend.name,
+                "Ip": backend.address,
+                "Weight": backend.Weight,
+                "Healthy": "1"
+            });
+        }
+        console.log(nodes)
+        return nodes;
+    }
+    //////////////////////////////////////////////////
     async update() {
         console.log('------------update start')
         var startTime = performance.now();
@@ -194,15 +248,16 @@ class Status {
             columns: Object.keys(units)
         };
 
-        const resp = await axios.get(HOST + '/nodes', { timeout: AXIOS_TIMEOUT });
-        data.nodes = resp.data;
-
-        const calls = [];
+        // const resp = await axios.get(HOST + '/nodes', { timeout: AXIOS_TIMEOUT });
+        // data.nodes = resp.data;
+        data.nodes = await this.getNodes();
 
         // add ton access nodes
+        const calls = [];
         for (const node of data.nodes) {
-            node.edgeName = node.BackendName || edgeNames[node.Name] || "unknown";
-            node.displayName = node.Name.slice(0, 4) + '...' + node.Name.slice(-4);
+            //node.edgeName = node.BackendName || edgeNames[node.Name] || "unknown";
+            //node.displayName = node.Name.slice(0, 4) + '...' + node.Name.slice(-4);
+            node.displayName = node.NodeId.slice(0, 4) + '...' + node.NodeId.slice(-4);
             calls.push(this.updateNodeUnits(node, units));
         };
 
