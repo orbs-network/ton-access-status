@@ -96,6 +96,39 @@ class Status {
         }, 1000);
     }
     //////////////////////////////////////////////////
+    async updateMngr(node) {
+        const url = `http://${node.Ip}/mngr/`;
+        node.mngr = {}
+        try {
+            const resp = await axios.get(url, { timeout: AXIOS_TIMEOUT });
+
+            if (resp.status === 200) {
+                node.mngr = resp.data;
+                // update health in units
+                for (let unit of node.units) {
+                    console.log(unit);
+                    // for UI
+                    unit.mngrHealth = node.mngr.health.hasOwnProperty(unit.name) ? node.mngr.health[unit.name] : "missing";
+                }
+
+            } else {
+                node.mngr.error = `wrong status ${resp.status}`;
+            }
+        }
+        catch (err) {
+            node.mngr.error = `erro code ${err.code}`;
+            if (err.code === 'ECONNABORTED') {
+                console.log('Request timeout', url, AXIOS_TIMEOUT);
+            } else {
+                // handle error
+                if (url.indexOf('ton-not-exist') == -1) { // filter out purposely error
+                    console.error('Request error', err.message, url);
+                }
+                //unit.error = err.message;
+            }
+        }
+    }
+    //////////////////////////////////////////////////
     async updateUnit(node, name, suffix) {
         const url = HOST + '/' + node.NodeId + suffix;
 
@@ -153,17 +186,19 @@ class Status {
         return unit;
     }
     //////////////////////////////////////////////////
-    async updateNodeUnits(node, units) {
+    async updateNode(node, units) {
         let calls = [];
         //let results = [];
         for (const name in units) {
-            calls.push(this.updateUnit(node, name, units[name]))
-            // serial impl
-            //const res = await this.updateUnit(node, name, units[name])
-            //results.push(res);
+            calls.push(this.updateUnit(node, name, units[name]));
         }
+
         try {
             node.units = await Promise.all(calls);
+
+            // manager after units so their helth can be updated
+            await this.updateMngr(node)
+
             ///console.log(units)
             node.error = null;
         } catch (e) {
@@ -237,7 +272,7 @@ class Status {
     }
     //////////////////////////////////////////////////
     async update() {
-        console.log('------------update start')
+        console.debug('------------update start')
         var startTime = performance.now();
 
         console.time("update status");
@@ -246,21 +281,16 @@ class Status {
             columns: Object.keys(units)
         };
 
-        // const resp = await axios.get(HOST + '/nodes', { timeout: AXIOS_TIMEOUT });
-        // data.nodes = resp.data;
         data.nodes = await this.getNodes();
 
         // add ton access nodes
         const calls = [];
         for (const node of data.nodes) {
-            //node.edgeName = node.BackendName || edgeNames[node.Name] || "unknown";
-            //node.displayName = node.Name.slice(0, 4) + '...' + node.Name.slice(-4);
             node.displayName = node.NodeId.slice(0, 4) + '...' + node.NodeId.slice(-4);
-            calls.push(this.updateNodeUnits(node, units));
+            calls.push(this.updateNode(node, units));
         };
 
         try {
-            //await Promise.allSettled(calls);
             await Promise.all(calls);
         } catch (e) {
             console.error(e);

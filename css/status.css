@@ -219,3 +219,21 @@ a:active {
 .info {
     padding: 5pt;
 }
+
+.mngr {
+    border: silver 1px solid;
+    padding: 2pt;
+    color: white;
+}
+
+.mngr.pass {
+    background-color: #3A3;
+}
+
+.mngr.error {
+    background-color: gray;
+}
+
+.mngr.fail {
+    background-color: #d55;
+}
