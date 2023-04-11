@@ -14,9 +14,11 @@ html
                 .node
                     .info.box.border(class= node.Healthy == 1? "healthy":"down")                     
                         .edgeName #{node.BackendName}
-                        div #{node.displayName}
-                        div Edge-Health: #{node.Healthy}
+                        div(title=node.NodeId) #{node.displayName}
+                        div Edge-Health: #{node.Healthy}                                                
                         div #{node.Ip}
+                        div Weight: 
+                            span(class="weight" ) #{node.Weight}%
                         if !node.mngr.error
                             div(class="mngr pass" title="Updated: #{node.mngr.updated}") &#10004; Manager 
                         else

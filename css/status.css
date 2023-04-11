@@ -163,6 +163,13 @@ h1 {
     align-items: stretch;
 }
 
+.weight {
+    color: white;
+    padding: 1pt;
+    background: grey;
+    border: 1px solid black;
+}
+
 .box {
     width: calc(100% / 6 - 10px);
     font-size: smaller;
@@ -222,12 +229,16 @@ a:active {
 
 .mngr {
     border: silver 1px solid;
-    padding: 2pt;
+    padding: 1pt;
+    text-align: center;
     color: white;
 }
 
 .mngr.pass {
-    background-color: #3A3;
+    margin-top: 1pt;
+    background-color: #3B3;
+    /* position: absolute;
+    bottom: 0; */
 }
 
 .mngr.error {
