@@ -17,8 +17,7 @@ html
                         div(title=node.NodeId) #{node.displayName}
                         div Edge-Health: #{node.Healthy}                                                
                         div #{node.Ip}
-                        div Weight: 
-                            span(class="weight" ) #{node.Weight}%
+                        div(class="weight" title="traffic distribution weight") Weight: #{node.Weight}%                             
                         if !node.mngr.error
                             div(class="mngr pass" title="Updated: #{node.mngr.updated}") &#10004; Manager 
                         else

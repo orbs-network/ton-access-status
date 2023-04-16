@@ -164,11 +164,12 @@ h1 {
 }
 
 .weight {
-    color: white;
-    padding: 1pt;
-    background: grey;
     border: 1px solid black;
+    padding-left: 5px;
+    padding-right: 5px;
 }
+
+
 
 .box {
     width: calc(100% / 6 - 10px);
@@ -234,10 +235,25 @@ a:active {
     color: white;
 }
 
+
+.info,
+.unit.box a {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    gap: 2pt;
+}
+
 .mngr.pass {
-    margin-top: 1pt;
+    /*margin-top: 1pt;*/
     background-color: #3B3;
-    /* position: absolute;
+    display: flex;
+    /*flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    gap: 10px;
+     position: absolute;
     bottom: 0; */
 }
 
