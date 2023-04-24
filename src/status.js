@@ -106,11 +106,20 @@ class Status {
 
             if (resp.status === 200) {
                 node.mngr = resp.data;
+                node.mngr.url = url;
                 // update health in units
                 for (let unit of node.units) {
-                    console.log(unit);
-                    // for UI
+                    // for UI                    
                     unit.mngrHealth = node.mngr.health.hasOwnProperty(unit.name) ? node.mngr.health[unit.name] : "missing";
+                    if (node.BackendName == "am1") {
+                        // if (unit.name === "v4-mainnet") {
+                        //     // cube
+                        //     unit.status = 500;
+                        //     unit.error = "alterred";
+                        //     // mngr
+                        //     unit.mngrHealth = true;
+                        // }
+                    }
                 }
 
             } else {

@@ -17,16 +17,17 @@ html
                         div(title=node.NodeId) #{node.displayName}
                         div Edge-Health: #{node.Healthy}                                                
                         div #{node.Ip}
-                        div(class="weight" title="traffic distribution weight") Weight: #{node.Weight}%                             
-                        if !node.mngr.error
-                            div(class="mngr pass" title="Updated: #{node.mngr.updated}") &#10004; Manager 
-                        else
-                            div(class="mngr error" title="#{node.mngr.error}") &#10006; Manager
+                        div(class="weight" title="traffic distribution weight") Weight: #{node.Weight}%                                                     
+                        a(href="#{node.mngr.url}" target="_blank" )
+                            if !node.mngr.error
+                                div(class="mngr pass" title="Updated: #{node.mngr.updated}") &#10004; Manager 
+                            else
+                                div(class="mngr error" title="#{node.mngr.error}") &#10006; Manager
 
 
                     each unit in node.units
                         .unit.box.border(class= unit.status === 200? "healthy":"down") 
-                            a(href="#{unit.url}" target="_blank" )                         
+                            a(href="#{unit.url}" target="_blank" )
                                 if unit.error
                                     div error: #{unit.error}
                                 else
@@ -34,11 +35,13 @@ html
                                     div(class= unit.elapsedMS > 470? "slow":"ok") elapsed : #{unit.elapsedMS} ms                                    
                                     div(class= unit.benchmarkMS > 0? "slow":"fast") benchmark : #{unit.benchmarkMS} ms
                                     div seqno: #{unit.seqno}
-                                    if !node.mngr.error
-                                        if unit.mngrHealth
-                                            div(class="mngr pass" title="test pass") &#10004; pass
-                                        else
-                                            div(class="mngr fail" title="test fail") &#10006; fail
+                            if !node.mngr.error                                    
+                                if unit.mngrHealth !== 'missing'                                
+                                    if unit.mngrHealth 
+                                        div(class="mngr pass" title="test pass") &#10004; pass
+                                    else
+                                        div(class="mngr fail" title="test fail") &#10006; fail
+                                    
             
             div.info Update time: #{new Date(succesTime).toLocaleString()}
             div.info Update duration: #{updateDuration}
