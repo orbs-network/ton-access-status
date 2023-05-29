@@ -1,7 +1,7 @@
 const axios = require('axios');
+const sendMessageToTelegram = require('./telegram')
 const HOST = 'https://ton.access.orbs.network';
 require('dotenv').config() // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
-
 
 const units = {
     "v2-mainnet": "/1/mainnet/toncenter-api-v2/getMasterchainInfo",
@@ -53,6 +53,8 @@ class Status {
 
     //////////////////////////////////////////////////
     async start() {
+        sendMessageToTelegram('\u2705 Status page started');
+
         //await this.monitor();
         await this.benchmarkTick();
         this.updateSetLoop();
@@ -282,6 +284,27 @@ class Status {
         return nodes;
     }
     //////////////////////////////////////////////////
+    checkHealthProtonet(nodes, protonet) {
+        // alert if manager health per protocol is False across all nodes
+        // return true if atleast one node is health
+        let health = false;
+        for (const node of nodes) {
+            if (node.mngr?.health)
+                health |= node.mngr.health[protonet];
+        }
+        return health;
+    }
+    //////////////////////////////////////////////////
+    checkAlerts(data) {
+        for (const protonet in benchmark) {
+            if (!this.checkHealthProtonet(data.nodes, protonet)) {
+                // entire protonet is unhealthy across all nodes                
+                sendMessageToTelegram('\u{1F6A8} ${protonet} is not healthy on all node!')
+            }
+        }
+
+    }
+    //////////////////////////////////////////////////
     async update() {
         console.debug('------------update start')
         var startTime = performance.now();
@@ -307,6 +330,8 @@ class Status {
             console.error(e);
             data.error = 'promiseAll error' + e.message;
         }
+
+        this.checkAlerts(data);
 
         console.timeEnd("update status");
         var endTime = performance.now();
