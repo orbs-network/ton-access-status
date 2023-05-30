@@ -281,6 +281,16 @@ class Status {
                 "Healthy": "1"
             });
         }
+
+        // add dev node 18.118.210.152
+        // nodes.push({
+        //     "NodeId": "not-on-edge",
+        //     "BackendName": "DEV",
+        //     "Ip": "18.118.210.152",
+        //     "Weight": 0,
+        //     "Healthy": "1"
+        // });
+
         return nodes;
     }
     //////////////////////////////////////////////////
@@ -298,8 +308,11 @@ class Status {
     checkAlerts(data) {
         for (const protonet in benchmark) {
             if (!this.checkHealthProtonet(data.nodes, protonet)) {
-                // entire protonet is unhealthy across all nodes                
-                sendMessageToTelegram('\u{1F6A8} ${protonet} is not healthy on all node!')
+                // entire protonet is unhealthy across all nodes
+                const msg = `\u{1F6A8} ${protonet} is not healthy on all node!`;
+                console.log(JSON.stringify(data, null, '\t'));
+                console.error(msg);
+                sendMessageToTelegram(msg);
             }
         }
 
@@ -331,7 +344,8 @@ class Status {
             data.error = 'promiseAll error' + e.message;
         }
 
-        this.checkAlerts(data);
+        if (data.nodes.length)
+            this.checkAlerts(data);
 
         console.timeEnd("update status");
         var endTime = performance.now();
