@@ -1,7 +1,10 @@
 const axios = require('axios');
 const sendMessageToTelegram = require('./telegram')
-const HOST = 'https://ton.access.orbs.network';
+const ConfigUpdater = require('./configUpdater');
+
 require('dotenv').config() // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
+
+const HOST = 'https://ton.access.orbs.network';
 
 const units = {
     "v2-mainnet": "/1/mainnet/toncenter-api-v2/getMasterchainInfo",
@@ -48,6 +51,7 @@ class Status {
             'Fastly-Key': process.env.FASTLY_API_KEY,
             'Accept': 'application/json'
         }
+        this.configUpdater = new ConfigUpdater();
 
     }
 
@@ -78,8 +82,11 @@ class Status {
     updateSetLoop() {
         const interval = 1 * 60 * 1000
         this.needUpdate = true;
-        setInterval(() => {
+        setInterval(async () => {
             this.needUpdate = true;
+            // update config
+            await this.configUpdater.updateLiveConfig('https://ton-blockchain.github.io/testnet-global.config.json', 'live-testnet.json');
+            await this.configUpdater.updateLiveConfig('https://ton-blockchain.github.io/global.config.json', 'live-mainnet.json');
         }, interval);
     }
     //////////////////////////////////////////////////
@@ -309,7 +316,7 @@ class Status {
         for (const protonet in benchmark) {
             if (!this.checkHealthProtonet(data.nodes, protonet)) {
                 // entire protonet is unhealthy across all nodes
-                const msg = `\u{1F6A8} ${protonet} is not healthy on all node!`;
+                const msg = `\u{1F6A8} ${protonet} is not healthy on all nodes!`;
                 console.log(JSON.stringify(data, null, '\t'));
                 console.error(msg);
                 sendMessageToTelegram(msg);

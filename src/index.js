@@ -28,3 +28,9 @@ status.start();
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`);
 })
+
+// this catched the exception thrown by lite client.
+process.on('uncaughtException', function (err) {
+    // Handle the error safely
+    // TOO MUCH LOGS console.log('uncaughtException:', err);
+});
