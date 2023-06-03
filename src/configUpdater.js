@@ -63,7 +63,11 @@ class ConfigUpdater {
       throw error;
     }
   }
-
+  // force create new config live files
+  // called upon alert by status
+  resetCache() {
+    this.previousHash = {};
+  }
   async updateLiveConfig(url, targetFileName) {
     // download config
     const config = await ConfigUpdater.downloadJsonFile(url);

@@ -320,6 +320,8 @@ class Status {
                 console.log(JSON.stringify(data, null, '\t'));
                 console.error(msg);
                 sendMessageToTelegram(msg);
+                // create new config files
+                this.configUpdater.resetCache();
             }
         }
 
