@@ -42,6 +42,12 @@ html
                                     else
                                         div(class="mngr fail" title="test fail") &#10006; fail
                                     
-            
+            if alert.count > 0
+                divs.alert Alerts
+                    each val, key in alert.protonetAcrossAllNodes
+                        if !val
+                            div #{key} is not healthy on all nodes 
+                                    
             div.info Update time: #{new Date(succesTime).toLocaleString()}
             div.info Update duration: #{updateDuration}
+            

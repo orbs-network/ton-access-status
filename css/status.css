@@ -264,3 +264,7 @@ a:active {
 .mngr.fail {
     background-color: #d55;
 }
+
+.alert {
+    background-color: yellow;
+}

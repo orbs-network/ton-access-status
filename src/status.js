@@ -1,6 +1,6 @@
 const axios = require('axios');
 const sendMessageToTelegram = require('./telegram')
-const ConfigUpdater = require('./configUpdater');
+const Alert = require('./alert')
 
 require('dotenv').config() // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 
@@ -51,13 +51,12 @@ class Status {
             'Fastly-Key': process.env.FASTLY_API_KEY,
             'Accept': 'application/json'
         }
-        this.configUpdater = new ConfigUpdater();
-
+        this.alert = new Alert();
     }
 
     //////////////////////////////////////////////////
     async start() {
-        sendMessageToTelegram('\u2705 Status page started');
+        await sendMessageToTelegram('\u2705 Status page started');
 
         //await this.monitor();
         await this.benchmarkTick();
@@ -84,9 +83,6 @@ class Status {
         this.needUpdate = true;
         setInterval(async () => {
             this.needUpdate = true;
-            // update config
-            await this.configUpdater.updateLiveConfig('https://ton-blockchain.github.io/testnet-global.config.json', 'live-testnet.json');
-            await this.configUpdater.updateLiveConfig('https://ton-blockchain.github.io/global.config.json', 'live-mainnet.json');
         }, interval);
     }
     //////////////////////////////////////////////////
@@ -301,37 +297,11 @@ class Status {
         return nodes;
     }
     //////////////////////////////////////////////////
-    checkHealthProtonet(nodes, protonet) {
-        // alert if manager health per protocol is False across all nodes
-        // return true if atleast one node is health
-        let health = false;
-        for (const node of nodes) {
-            if (node.mngr?.health)
-                health |= node.mngr.health[protonet];
-        }
-        return health;
-    }
-    //////////////////////////////////////////////////
-    checkAlerts(data) {
-        for (const protonet in benchmark) {
-            if (!this.checkHealthProtonet(data.nodes, protonet)) {
-                // entire protonet is unhealthy across all nodes
-                const msg = `\u{1F6A8} ${protonet} is not healthy on all nodes!`;
-                console.log(JSON.stringify(data, null, '\t'));
-                console.error(msg);
-                sendMessageToTelegram(msg);
-                // create new config files
-                this.configUpdater.resetCache();
-            }
-        }
-
-    }
-    //////////////////////////////////////////////////
     async update() {
         console.debug('------------update start')
         var startTime = performance.now();
 
-        console.time("update status");
+        console.time("updateStatus");
         const data = {
             succesTime: Date.now(),
             columns: Object.keys(units)
@@ -353,10 +323,12 @@ class Status {
             data.error = 'promiseAll error' + e.message;
         }
 
-        if (data.nodes.length)
-            this.checkAlerts(data);
+        if (data.nodes.length) {
+            await this.alert.check(benchmark, data);
+            data.alert = this.alert.status();
+        }
 
-        console.timeEnd("update status");
+        console.timeEnd("updateStatus");
         var endTime = performance.now();
         data.updateDuration = Math.round(endTime - startTime);
         this.updateing = false;
