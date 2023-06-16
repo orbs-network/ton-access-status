@@ -38,12 +38,12 @@ const benchmark = {
 
 // axiousTimeout
 //const INTERVAL = 60 * 1000;
-const AXIOS_TIMEOUT = 1500;
+const AXIOS_TIMEOUT = 5000;
 
 class Status {
     constructor() {
         this.data = {}
-        //this.updateing = false;
+        this.tickIndex = 0;
         this.needUpdate = false;
         this.edgeSvcUrl = `https://api.fastly.com/service/${process.env.FASTLY_SERVICE_ID}`;
 
@@ -116,15 +116,15 @@ class Status {
                 for (let unit of node.units) {
                     // for UI                    
                     unit.mngrHealth = node.mngr.health.hasOwnProperty(unit.name) ? node.mngr.health[unit.name] : "missing";
-                    if (node.BackendName == "am1") {
-                        // if (unit.name === "v4-mainnet") {
-                        //     // cube
-                        //     unit.status = 500;
-                        //     unit.error = "alterred";
-                        //     // mngr
-                        //     unit.mngrHealth = true;
-                        // }
-                    }
+                    //if (node.BackendName == "am1") {
+                    // if (unit.name === "v4-mainnet") {
+                    //     // cube
+                    //     unit.status = 500;
+                    //     unit.error = "alterred";
+                    //     // mngr
+                    //     unit.mngrHealth = true;
+                    // }
+                    //}
                 }
 
             } else {
@@ -203,15 +203,16 @@ class Status {
     }
     //////////////////////////////////////////////////
     async updateNode(node, units) {
-        let calls = [];
-        //let results = [];
+        // create and update units for this node
+        node.units = []
         for (const name in units) {
-            calls.push(this.updateUnit(node, name, units[name]));
+            const unit = await this.updateUnit(node, name, units[name]).catch(e => {
+                console.error('updateUnit', e);
+            });
+            node.units.push(unit);
         }
 
         try {
-            node.units = await Promise.all(calls);
-
             // manager after units so their helth can be updated
             await this.updateMngr(node)
 
@@ -242,12 +243,14 @@ class Status {
     //////////////////////////////////////////////////
     async updateBenchmark() {
         console.time("updateBenchmark");
-        let calls = [];
+        // make serial
         for (const protocol in benchmark) {
-            calls.push(this.updateBenchmarkProtocol(benchmark[protocol]))
-            //await this.updateBenchmarkProtocol(benchmark[protocol]);
+            //calls.push(this.updateBenchmarkProtocol(benchmark[protocol]))
+            await this.updateBenchmarkProtocol(benchmark[protocol]).catch(e => {
+                console.error('updateBenchmarkProtocol', protocol, e);
+            });
         }
-        await Promise.all(calls);
+        //await Promise.all(calls);
         console.timeEnd("updateBenchmark");
     }
     //////////////////////////////////////////////////
@@ -301,7 +304,6 @@ class Status {
         console.debug('------------update start')
         var startTime = performance.now();
 
-        console.time("updateStatus");
         const data = {
             succesTime: Date.now(),
             columns: Object.keys(units)
@@ -309,29 +311,31 @@ class Status {
 
         data.nodes = await this.getNodes();
 
-        // add ton access nodes
-        const calls = [];
-        for (const node of data.nodes) {
-            node.displayName = node.NodeId.slice(0, 4) + '...' + node.NodeId.slice(-4);
-            calls.push(this.updateNode(node, units));
-        };
+        // make serial
 
-        try {
-            await Promise.all(calls);
-        } catch (e) {
-            console.error(e);
-            data.error = 'promiseAll error' + e.message;
-        }
+        for (const node of data.nodes) {
+            // set display name
+            node.displayName = node.NodeId.slice(0, 4) + '...' + node.NodeId.slice(-4);
+            // get
+            await this.updateNode(node, units).catch(e => {
+                console.error(e);
+                data.error = 'updateNode' + e.message;
+            });
+        };
 
         if (data.nodes.length) {
             await this.alert.check(benchmark, data);
             data.alert = this.alert.status();
         }
 
-        console.timeEnd("updateStatus");
+
         var endTime = performance.now();
         data.updateDuration = Math.round(endTime - startTime);
-        this.updateing = false;
+
+        if (!this.tickIndex % 10) {
+            console.log(this.tickIndex, `update time: ${parseInt(data.updateDuration / 1000)} sec`);
+        }
+        this.tickIndex++;
 
         // return val
         this.data = data;
