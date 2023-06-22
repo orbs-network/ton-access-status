@@ -79,7 +79,7 @@ class Status {
     }
     //////////////////////////////////////////////////
     updateSetLoop() {
-        const interval = 1 * 60 * 1000
+        const interval = 2 * 60 * 1000
         this.needUpdate = true;
         setInterval(async () => {
             this.needUpdate = true;
