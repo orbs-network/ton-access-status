@@ -16,6 +16,10 @@ app.get('/', async function (req, res) {
     res.render('status', status.data);
 });
 
+app.get('/api', async function (req, res) {
+    res.render('api');
+});
+
 
 app.get('/json', async function (req, res) {
     status.needUpdate = true;
