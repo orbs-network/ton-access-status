@@ -6,6 +6,8 @@ class Alert {
     constructor() {
         // init empty across All Nodes status
         this.protonetAcrossAllNodes = {}
+        this.consistMngrNodes = -1; // uninitialized
+
 
         // update config
         this.configUpdater = this.configUpdater = new ConfigUpdater();
@@ -18,10 +20,16 @@ class Alert {
             if (!this.protonetAcrossAllNodes[protonet])
                 count++;
         }
-        return {
+        let res = {
             count: count,
             protonetAcrossAllNodes: Object.assign({}, this.protonetAcrossAllNodes)
         }
+
+        if (!this.consistMngrNodes) {
+            res.count += 1; // to trigger UI
+            res.consistMngrNodesMsg = "\u{1F6A8} /node/mngr is NOT consistant on all nodes!"
+        }
+        return res;
     }
     //////////////////////////////////////////////////
     async updateConfig() {
@@ -40,7 +48,7 @@ class Alert {
         return health ? true : false;
     }
     ///////////////////////////////////////////
-    async check(benchmark, data) {
+    async checkProtonetAccross(benchmark, data) {
         let changed = false;
         let needUpdate = false;
         // ceck protonet inactive across all nodes
@@ -75,6 +83,51 @@ class Alert {
             await this.updateConfig();
 
         return changed;
+    }
+    ///////////////////////////////////////////
+    cmpNodesApi(a, b) {
+        if (a.status !== b.status)
+            return false;
+        if (a.resp.length !== b.resp.length)
+            return false;
+
+        for (let i = 0; i < a.resp.length; ++i) {
+            if (a.resp[i].NodeId !== b.resp[i].NodeId)
+                return false;
+            if (a.resp[i].BackendName !== b.resp[i].BackendName)
+                return false;
+            if (a.resp[i].Ip !== b.resp[i].Ip)
+                return false;
+            if (a.resp[i].Weight !== b.resp[i].Weight)
+                return false;
+            // not topology related- might get inconsistent depends on mngr check timing               
+            //if (a.resp[i].Healthy !== b.resp[i].Healthy)
+            //return false;
+        }
+        return true;
+    }
+
+    ///////////////////////////////////////////
+    async checkConsistNodesApi(nodes) {
+        const nodesApi = nodes[0].mngr.nodesApi;
+        let consist = true;
+        for (let i = 1; i < nodes.length && consist; ++i) {
+            consist = consist && this.cmpNodesApi(nodesApi, nodes[i].mngr.nodesApi);
+        }
+
+        // if changed
+        if (this.consistMngrNodes !== consist) {
+            this.consistMngrNodes = consist;
+
+            // send alert                
+            const icon = consist ? '\u2705' : '\u{1F6A8}';
+            const msg = `${icon} /node/mngr is ${consist ? '' : 'not'} consistant on ${consist ? 'all' : 'one or more'} nodes!`;
+            if (!consist) {
+                console.error(msg);
+            }
+            await sendMessageToTelegram(msg);
+        }
+
     }
 }
 

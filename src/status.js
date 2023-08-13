@@ -116,15 +116,6 @@ class Status {
                 for (let unit of node.units) {
                     // for UI                    
                     unit.mngrHealth = node.mngr.health.hasOwnProperty(unit.name) ? node.mngr.health[unit.name] : "missing";
-                    //if (node.BackendName == "am1") {
-                    // if (unit.name === "v4-mainnet") {
-                    //     // cube
-                    //     unit.status = 500;
-                    //     unit.error = "alterred";
-                    //     // mngr
-                    //     unit.mngrHealth = true;
-                    // }
-                    //}
                 }
 
             } else {
@@ -141,6 +132,32 @@ class Status {
                     console.error('Request error', err.message, url);
                 }
                 //unit.error = err.message;
+            }
+        }
+    }
+    //////////////////////////////////////////////////
+    async updateMngrNodesApi(node) {
+        const url = `http://${node.Ip}/mngr/nodes`;
+        node.mngr.nodesApi = {
+            status: -1,
+            resp: "",
+            url: url
+        }
+        try {
+            const resp = await axios.get(url, { timeout: AXIOS_TIMEOUT });
+            node.mngr.nodesApi.status = resp.status;
+
+            if (resp.status === 200) {
+                node.mngr.nodesApi.resp = resp.data;
+                node.mngr.nodesApi.url = url;
+            }
+        }
+        catch (err) {
+            node.mngr.nodesApi.error = err.message;
+            if (err.code === 'ECONNABORTED') {
+                console.log('Request timeout', url, AXIOS_TIMEOUT);
+            } else {
+                console.error('Request error', err.message, url);
             }
         }
     }
@@ -215,6 +232,7 @@ class Status {
         try {
             // manager after units so their helth can be updated
             await this.updateMngr(node)
+            await this.updateMngrNodesApi(node)
 
             ///console.log(units)
             node.error = null;
@@ -312,7 +330,6 @@ class Status {
         data.nodes = await this.getNodes();
 
         // make serial
-
         for (const node of data.nodes) {
             // set display name
             node.displayName = node.NodeId.slice(0, 4) + '...' + node.NodeId.slice(-4);
@@ -323,11 +340,12 @@ class Status {
             });
         };
 
+        // trigger alerts
         if (data.nodes.length) {
-            await this.alert.check(benchmark, data);
+            await this.alert.checkProtonetAccross(benchmark, data);
+            await this.alert.checkConsistNodesApi(data.nodes);
             data.alert = this.alert.status();
         }
-
 
         var endTime = performance.now();
         data.updateDuration = Math.round(endTime - startTime);
