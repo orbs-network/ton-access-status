@@ -163,11 +163,7 @@ h1 {
     align-items: stretch;
 }
 
-.weight {
-    border: 1px solid silver;
-    padding-left: 5px;
-    padding-right: 5px;
-}
+.weight {}
 
 
 
@@ -266,5 +262,12 @@ a:active {
 }
 
 .alert {
-    background-color: yellow;
+    display: flex;
+    flex-direction: column;
+    border: gray 1px solid;
+    padding: 10pt;
+}
+
+.alert div {
+    margin: 10pt;
 }

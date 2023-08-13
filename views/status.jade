@@ -17,14 +17,18 @@ html
                         div(title=node.NodeId) #{node.displayName}
                         div Edge-Health: #{node.Healthy}                                                
                         div #{node.Ip}
-                        div(class="weight" title="traffic distribution weight") Weight: #{node.Weight}%                                                     
+                        div(class="weight" title="traffic distribution weight") Weight: #{node.Weight}%                                                                         
+                        a(href="#{node.mngr.nodesApi.url}" target="_blank" )
+                            if !node.mngr.nodesApi.error
+                                div(class="/mngr/nodes" title="Updated: #{node.mngr.updated}") &#10004; nodesApi 
+                            else
+                                div(class="/mngr/nodes error" title="#{node.mngr.nodesApi.error}") &#10006; nodesApi
                         a(href="#{node.mngr.url}" target="_blank" )
                             if !node.mngr.error
                                 div(class="mngr pass" title="Updated: #{node.mngr.updated}") &#10004; Manager 
                             else
                                 div(class="mngr error" title="#{node.mngr.error}") &#10006; Manager
-
-
+                        
                     each unit in node.units
                         .unit.box.border(class= unit.status === 200? "healthy":"down") 
                             a(href="#{unit.url}" target="_blank" )
@@ -44,10 +48,15 @@ html
                                     
             if alert.count > 0
                 divs.alert Alerts
-                    each val, key in alert.protonetAcrossAllNodes
-                        if !val
-                            div #{key} is not healthy on all nodes 
-                                    
+                    // /mngr/nodes api consist 
+                    if alert.consistMngrNodesMsg.length                 
+                        div #{alert.consistMngrNodesMsg}
+                    // protonet accross
+                    if alert.protonetAcrossAllNodes                    
+                        each val, key in alert.protonetAcrossAllNodes
+                            if !val
+                                div #{key} is not healthy on all nodes 
+                                
             div.info Update time: #{new Date(succesTime).toLocaleString()}
             div.info Update duration: #{updateDuration}
             
