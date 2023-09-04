@@ -297,13 +297,17 @@ class Status {
         const backends = await this.callEdgeApi(`version/${version.data.number}/backend`);
         const nodes = [];
         for (const backend of backends.data) {
-            nodes.push({
-                "NodeId": this.beName2Id[backend.name],
-                "BackendName": backend.name,
-                "Ip": backend.address,
-                "Weight": backend.weight,
-                "Healthy": "1"
-            });
+            const active = this.beName2Id.hasOwnProperty(backend.name);
+            if (active) {
+                nodes.push({
+                    "NodeId": active ? this.beName2Id[backend.name] : "off-edge",
+                    "BackendName": backend.name,
+                    "Ip": backend.address,
+                    "Weight": backend.weight,
+                    "Healthy": "1",
+                    "_active": active
+                });
+            }
         }
 
         // add dev node 18.118.210.152
@@ -331,13 +335,15 @@ class Status {
 
         // make serial
         for (const node of data.nodes) {
-            // set display name
-            node.displayName = node.NodeId.slice(0, 4) + '...' + node.NodeId.slice(-4);
-            // get
-            await this.updateNode(node, units).catch(e => {
-                console.error(e);
-                data.error = 'updateNode' + e.message;
-            });
+            if (node._active) { // update only active nodes
+                // set display name
+                node.displayName = node.NodeId.slice(0, 4) + '...' + node.NodeId.slice(-4);
+                // get
+                await this.updateNode(node, units).catch(e => {
+                    console.error(e);
+                    data.error = 'updateNode' + e.message;
+                });
+            }
         };
 
         // trigger alerts
