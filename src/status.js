@@ -56,7 +56,7 @@ class Status {
 
     //////////////////////////////////////////////////
     async start() {
-        await sendMessageToTelegram('\u2705 Status page started');
+        //await sendMessageToTelegram('\u2705 Status page started');
 
         //await this.monitor();
         await this.benchmarkTick();

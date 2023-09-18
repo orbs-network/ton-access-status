@@ -6,7 +6,7 @@ class Alert {
     constructor() {
         // init empty across All Nodes status
         this.protonetAcrossAllNodes = {}
-        this.consistMngrNodes = -1; // uninitialized
+        this.consistMngrNodes = true; // initialize to true to avoid first message
 
 
         // update config
@@ -54,9 +54,9 @@ class Alert {
         // ceck protonet inactive across all nodes
         for (const protonet in benchmark) {
             const healthy = this.checkHealthProtonet(data.nodes, protonet);
-            // create entry for protonet if 
+            // create entry for protonet - assumes healthy to avoid first message 
             if (!this.protonetAcrossAllNodes.hasOwnProperty(protonet)) {
-                this.protonetAcrossAllNodes[protonet] = null;
+                this.protonetAcrossAllNodes[protonet] = true;
             }
             // send GOOD/BAD message only upon change
             if (healthy !== this.protonetAcrossAllNodes[protonet]) {
