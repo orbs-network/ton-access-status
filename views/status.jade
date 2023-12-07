@@ -49,7 +49,7 @@ html
             if alert.count > 0
                 divs.alert Alerts
                     // /mngr/nodes api consist 
-                    if alert.consistMngrNodesMsg.length                 
+                    if alert.consistMngrNodesMsg && alert.consistMngrNodesMsg.length                 
                         div #{alert.consistMngrNodesMsg}
                     // protonet accross
                     if alert.protonetAcrossAllNodes                    
