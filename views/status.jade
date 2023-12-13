@@ -37,7 +37,7 @@ html
                                 else
                                     div status: #{unit.status}    
                                     div(class= unit.elapsedMS > 470? "slow":"ok") elapsed : #{unit.elapsedMS} ms                                    
-                                    div(class= unit.benchmarkMS > 0? "slow":"fast") benchmark : #{unit.benchmarkMS} ms
+                                    //div(class= unit.benchmarkMS > 0? "slow":"fast") benchmark : #{unit.benchmarkMS} ms
                                     div seqno: #{unit.seqno}
                             if !node.mngr.error                                    
                                 if unit.mngrHealth !== 'missing'                                
@@ -46,7 +46,7 @@ html
                                     else
                                         div(class="mngr fail" title="test fail") &#10006; fail
                                     
-            if alert.count > 0
+            if alert && alert.count > 0
                 divs.alert Alerts
                     // /mngr/nodes api consist 
                     if alert.consistMngrNodesMsg && alert.consistMngrNodesMsg.length                 
