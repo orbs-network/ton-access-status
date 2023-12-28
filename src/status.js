@@ -363,8 +363,8 @@ class Status {
         }
         this.tickIndex++;
 
-        // return val
-        this.data = data;
+        // return val - deep copy for consistancy
+        this.data = JSON.parse(JSON.stringify(data));
     }
 }
 
