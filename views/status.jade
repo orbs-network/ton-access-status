@@ -2,9 +2,13 @@ html
     head
         link(href='status.css', rel='stylesheet')
         title TON-ACCESS Status Page
+        
     body
         .cont
             h1 ORBS TON-Access Status Page
+            .stats
+                div Update time: #{new Date(succesTime).toLocaleString()}
+                div Update duration: #{(updateDuration/1000).toFixed(2)} s
             
             .header
                 .box.border Node
@@ -12,7 +16,7 @@ html
                     .box.border #{column}
             each node in nodes
                 .node
-                    .info.box.border(class= node.Healthy == 1? "healthy":"down")                     
+                    .box.border(class= node.Healthy == 1? "healthy":"down")                     
                         .edgeName #{node.BackendName}
                         div(title=node.NodeId) #{node.displayName}
                         div Edge-Health: #{node.Healthy}                                                
@@ -23,7 +27,7 @@ html
                                 div(class="/mngr/nodes" title="Updated: #{node.mngr.updated}") &#10004; nodesApi 
                             else
                                 div(class="/mngr/nodes error" title="#{node.mngr.nodesApi.error}") &#10006; nodesApi
-                        a(href="#{node.mngr.url}" target="_blank" )
+                        a(href="#{node.mngr.url}" target="_blank" title="#{node.mngr.url}" style="width:100%")
                             if !node.mngr.error
                                 div(class="mngr pass" title="Updated: #{node.mngr.updated}") &#10004; Manager 
                             else
@@ -44,7 +48,7 @@ html
                                     if unit.mngrHealth 
                                         div(class="mngr pass" title="test pass") &#10004; pass
                                     else
-                                        div(class="mngr fail" title="test fail") &#10006; fail
+                                        div(class="mngr fail" title="#{node.mngr.errors[0]}") &#10006; fail
                                     
             if alert && alert.count > 0
                 divs.alert Alerts
@@ -56,7 +60,6 @@ html
                         each val, key in alert.protonetAcrossAllNodes
                             if !val
                                 div #{key} is not healthy on all nodes 
-                                
-            div.info Update time: #{new Date(succesTime).toLocaleString()}
-            div.info Update duration: #{updateDuration}
+                            
+            
             

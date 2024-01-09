@@ -51,7 +51,7 @@ class Status {
             'Fastly-Key': process.env.FASTLY_API_KEY,
             'Accept': 'application/json'
         }
-        //this.alert = new Alert();
+        this.alert = new Alert();
     }
 
     //////////////////////////////////////////////////
@@ -93,6 +93,7 @@ class Status {
                 try {
                     this.needUpdate = false;
                     await this.update();
+                    //this.data = require('../status-mock.json');
                 }
                 catch (e) {
                     console.error('updateLoop', e);
@@ -106,26 +107,27 @@ class Status {
     async updateMngr(node) {
         const url = `http://${node.Ip}/mngr/`;
         node.mngr = {}
+        node.mngr.url = url;
         try {
             const resp = await axios.get(url, { timeout: AXIOS_TIMEOUT });
-
             if (resp.status === 200) {
                 node.mngr = resp.data;
-                node.mngr.url = url;
                 // update health in units
                 for (let unit of node.units) {
                     // for UI                    
                     unit.mngrHealth = node.mngr.health.hasOwnProperty(unit.name) ? node.mngr.health[unit.name] : "missing";
                 }
-
-            } else {
-                node.mngr.error = `wrong status ${resp.status}`;
             }
+            else {
+                node.mngr.error = `wrong status ${resp.status} `;
+            }
+            // for UI
+            node.mngr.url = url;
         }
         catch (err) {
             node.mngr.error = `erro code ${err.code}`;
             if (err.code === 'ECONNABORTED') {
-                console.log('Request timeout', url, AXIOS_TIMEOUT);
+                console.error('Request timeout', url, AXIOS_TIMEOUT);
             }
             //else {
             //     // handle error
@@ -156,7 +158,7 @@ class Status {
         catch (err) {
             node.mngr.nodesApi.error = err.message;
             if (err.code === 'ECONNABORTED') {
-                console.log('Request timeout', url, AXIOS_TIMEOUT);
+                console.error('Request timeout', url, AXIOS_TIMEOUT);
             } else {
                 console.error('Request error', err.message, url);
             }
@@ -349,11 +351,11 @@ class Status {
         };
 
         // trigger alerts
-        // if (data.nodes.length) {
-        //     await this.alert.checkProtonetAccross(benchmark, data);
-        //     await this.alert.checkConsistNodesApi(data.nodes);
-        //     data.alert = this.alert.status();
-        // }
+        if (data.nodes.length) {
+            await this.alert.checkProtonetAccross(benchmark, data);
+            await this.alert.checkConsistNodesApi(data.nodes);
+            data.alert = this.alert.status();
+        }
 
         var endTime = performance.now();
         data.updateDuration = Math.round(endTime - startTime);
