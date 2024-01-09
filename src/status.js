@@ -10,8 +10,8 @@ const units = {
     "v2-mainnet": "/1/mainnet/toncenter-api-v2/getMasterchainInfo",
     "v2-testnet": "/1/testnet/toncenter-api-v2/getMasterchainInfo",
     "v4-mainnet": "/1/mainnet/ton-api-v4/block/latest",
-    "v4-testnet": "/1/testnet/ton-api-v4/block/latest",
-    "ton-not-exist": "/1/testnet/ton-not-exist/block/latest"
+    "v4-testnet": "/1/testnet/ton-api-v4/block/latest"//,
+    //"ton-not-exist": "/1/testnet/ton-not-exist/block/latest"
 }
 const benchmark = {
     "v2-mainnet": { url: "https://toncenter.com/api/v2/getMasterchainInfo" },
@@ -59,24 +59,24 @@ class Status {
         //await sendMessageToTelegram('\u2705 Status page started');
 
         //await this.monitor();
-        await this.benchmarkTick();
+        //await this.benchmarkTick();
         this.updateSetLoop();
         this.updateGetLoop();
     }
     //////////////////////////////////////////////////
     // refresh benchmark every 5 minutes
-    async benchmarkTick() {
-        // now first
-        await this.updateBenchmark();
-        const interval = 5 * 60 * 1000
-        setInterval(async () => {
-            try {
-                await this.updateBenchmark();
-            } catch (e) {
-                console.error('benchmarkTick', e);
-            }
-        }, interval);
-    }
+    // async benchmarkTick() {
+    //     // now first
+    //     await this.updateBenchmark();
+    //     const interval = 5 * 60 * 1000
+    //     setInterval(async () => {
+    //         try {
+    //             await this.updateBenchmark();
+    //         } catch (e) {
+    //             console.error('benchmarkTick', e);
+    //         }
+    //     }, interval);
+    // }
     //////////////////////////////////////////////////
     updateSetLoop() {
         const interval = 2 * 60 * 1000
@@ -93,6 +93,7 @@ class Status {
                 try {
                     this.needUpdate = false;
                     await this.update();
+                    //this.data = require('../status-mock.json');
                 }
                 catch (e) {
                     console.error('updateLoop', e);
@@ -106,33 +107,35 @@ class Status {
     async updateMngr(node) {
         const url = `http://${node.Ip}/mngr/`;
         node.mngr = {}
+        node.mngr.url = url;
         try {
             const resp = await axios.get(url, { timeout: AXIOS_TIMEOUT });
-
             if (resp.status === 200) {
                 node.mngr = resp.data;
-                node.mngr.url = url;
                 // update health in units
                 for (let unit of node.units) {
                     // for UI                    
                     unit.mngrHealth = node.mngr.health.hasOwnProperty(unit.name) ? node.mngr.health[unit.name] : "missing";
                 }
-
-            } else {
-                node.mngr.error = `wrong status ${resp.status}`;
             }
+            else {
+                node.mngr.error = `wrong status ${resp.status} `;
+            }
+            // for UI
+            node.mngr.url = url;
         }
         catch (err) {
             node.mngr.error = `erro code ${err.code}`;
             if (err.code === 'ECONNABORTED') {
-                console.log('Request timeout', url, AXIOS_TIMEOUT);
-            } else {
-                // handle error
-                if (url.indexOf('ton-not-exist') == -1) { // filter out purposely error
-                    console.error('Request error', err.message, url);
-                }
-                //unit.error = err.message;
+                console.error('Request timeout', url, AXIOS_TIMEOUT);
             }
+            //else {
+            //     // handle error
+            //     if (url.indexOf('ton-not-exist') == -1) { // filter out purposely error
+            //         console.error('Request error', err.message, url);
+            //     }
+            //     //unit.error = err.message;
+            // }
         }
     }
     //////////////////////////////////////////////////
@@ -155,7 +158,7 @@ class Status {
         catch (err) {
             node.mngr.nodesApi.error = err.message;
             if (err.code === 'ECONNABORTED') {
-                console.log('Request timeout', url, AXIOS_TIMEOUT);
+                console.error('Request timeout', url, AXIOS_TIMEOUT);
             } else {
                 console.error('Request error', err.message, url);
             }
@@ -184,25 +187,26 @@ class Status {
         }
         catch (err) {
             if (err.code === 'ECONNABORTED') {
-                console.log('Request timeout', url, AXIOS_TIMEOUT);
+                console.error('Request timeout', url, AXIOS_TIMEOUT);
                 unit.error = `timeout ${AXIOS_TIMEOUT} ms`;
-            } else {
-                // handle error
-                if (url.indexOf('ton-not-exist') == -1) { // filter out purposely error
-                    console.error('Request error', err.message, url);
-                }
-                unit.error = err.message;
             }
+            // else {
+            //     // handle error
+            //     if (url.indexOf('ton-not-exist') == -1) { // filter out purposely error
+            //         console.error('Request error', err.message, url);
+            //     }
+            //     unit.error = err.message;
+            // }
         }
         // elapsed and benchmark
         var endTime = performance.now();
         unit.elapsedMS = Math.round(endTime - startTime);
 
         // benchmark
-        if (benchmark[unit.name]?.elapsedMS) {
-            const benchmarkMS = benchmark[unit.name].elapsedMS;
-            unit.benchmarkMS = unit.elapsedMS - benchmarkMS;
-        }
+        // if (benchmark[unit.name]?.elapsedMS) {
+        //     const benchmarkMS = benchmark[unit.name].elapsedMS;
+        //     unit.benchmarkMS = unit.elapsedMS - benchmarkMS;
+        // }
 
         if (resp) {
             unit.status = resp.status;
@@ -242,35 +246,35 @@ class Status {
         }
     }
     //////////////////////////////////////////////////
-    async updateBenchmarkProtocol(bm) {
-        const startTime = performance.now();
-        bm.elapsedMS = -1;
-        try {
-            await axios.get(bm.url, { timeout: AXIOS_TIMEOUT });
-            bm.elapsedMS = Math.round(performance.now() - startTime);
-        }
-        catch (err) {
-            if (err.code === 'ECONNABORTED') {
-                console.log('Benchmark Request timeout', bm.url, AXIOS_TIMEOUT);
-                duration = Math.round(endTime - startTime);
-            } else {
-                console.error('Benchmark Request error', err.message, bm.url);
-            }
-        }
-    }
+    // async updateBenchmarkProtocol(bm) {
+    //     const startTime = performance.now();
+    //     bm.elapsedMS = -1;
+    //     try {
+    //         await axios.get(bm.url, { timeout: AXIOS_TIMEOUT });
+    //         bm.elapsedMS = Math.round(performance.now() - startTime);
+    //     }
+    //     catch (err) {
+    //         if (err.code === 'ECONNABORTED') {
+    //             console.log('Benchmark Request timeout', bm.url, AXIOS_TIMEOUT);
+    //             duration = Math.round(endTime - startTime);
+    //         } else {
+    //             console.error('Benchmark Request error', err.message, bm.url);
+    //         }
+    //     }
+    // }
     //////////////////////////////////////////////////
-    async updateBenchmark() {
-        console.time("updateBenchmark");
-        // make serial
-        for (const protocol in benchmark) {
-            //calls.push(this.updateBenchmarkProtocol(benchmark[protocol]))
-            await this.updateBenchmarkProtocol(benchmark[protocol]).catch(e => {
-                console.error('updateBenchmarkProtocol', protocol, e);
-            });
-        }
-        //await Promise.all(calls);
-        console.timeEnd("updateBenchmark");
-    }
+    // async updateBenchmark() {
+    //     console.time("updateBenchmark");
+    //     // make serial
+    //     for (const protocol in benchmark) {
+    //         //calls.push(this.updateBenchmarkProtocol(benchmark[protocol]))
+    //         await this.updateBenchmarkProtocol(benchmark[protocol]).catch(e => {
+    //             console.error('updateBenchmarkProtocol', protocol, e);
+    //         });
+    //     }
+    //     //await Promise.all(calls);
+    //     console.timeEnd("updateBenchmark");
+    // }
     //////////////////////////////////////////////////
     async callEdgeApi(method) {
         const url = `${this.edgeSvcUrl}/${method}`;
@@ -361,8 +365,8 @@ class Status {
         }
         this.tickIndex++;
 
-        // return val
-        this.data = data;
+        // return val - deep copy for consistancy
+        this.data = JSON.parse(JSON.stringify(data));
     }
 }
 
