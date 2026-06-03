@@ -3,3 +3,4 @@ node_modules/
 .vscode/
 *.sh
 logs/
+.DS_Store
