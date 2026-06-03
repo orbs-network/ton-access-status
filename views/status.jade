@@ -43,12 +43,13 @@ html
                                     div(class= unit.elapsedMS > 470? "slow":"ok") elapsed : #{unit.elapsedMS} ms                                    
                                     //div(class= unit.benchmarkMS > 0? "slow":"fast") benchmark : #{unit.benchmarkMS} ms
                                     div seqno: #{unit.seqno}
-                            if !node.mngr.error                                    
-                                if unit.mngrHealth !== 'missing'                                
-                                    if unit.mngrHealth 
-                                        div(class="mngr pass" title="test pass") &#10004; pass
-                                    else
-                                        div(class="mngr fail" title="#{node.mngr.errors[0]}") &#10006; fail
+                            if !node.mngr.error
+                                if unit.displayHealth === 'pass'
+                                    div(class="mngr pass" title="test pass") &#10004; pass
+                                else if unit.displayHealth === 'warn'
+                                    div(class="mngr warn" title="manager flapping on " + unit.name + " (" + unit.failStreak + "/3 failed readings)") &#9888; warn
+                                else if unit.displayHealth === 'fail'
+                                    div(class="mngr fail" title=(node.mngr.errors && node.mngr.errors.length) ? node.mngr.errors.join('; ') : ('manager reports ' + unit.name + ' unhealthy (' + unit.failStreak + ' consecutive)')) &#10006; fail
                                     
             if alert && alert.count > 0
                 divs.alert Alerts

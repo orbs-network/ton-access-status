@@ -7,6 +7,7 @@ class Alert {
         // init empty across All Nodes status
         this.protonetAcrossAllNodes = {}
         this.consistMngrNodes = true; // initialize to true to avoid first message
+        this.emptyNodesApi = false; // initialize to false (none empty) to avoid first message
 
 
         // update config
@@ -107,6 +108,33 @@ class Alert {
         return true;
     }
 
+    ///////////////////////////////////////////
+    // returns true when no node has an empty nodesApi list (caller should then run consistency check)
+    async checkEmptyNodesApi(nodes) {
+        let empty = false;
+        let emptyName = '';
+        for (const node of nodes) {
+            const resp = node.mngr?.nodesApi?.resp;
+            if (!resp || resp.length === 0) {
+                empty = true;
+                emptyName = node.BackendName;
+                break;
+            }
+        }
+
+        // send alert only on state change
+        if (this.emptyNodesApi !== empty) {
+            this.emptyNodesApi = empty;
+            const icon = empty ? '\u{1F6A8}' : '✅';
+            const msg = empty
+                ? `${icon} /mngr/nodes is empty on ${emptyName} (one or more nodes)`
+                : `${icon} /mngr/nodes is no longer empty on any node`;
+            if (empty) console.error(msg);
+            await sendMessageToTelegram(msg);
+        }
+
+        return !empty;
+    }
     ///////////////////////////////////////////
     async checkConsistNodesApi(nodes) {
         const nodesApi = nodes[0].mngr.nodesApi;
