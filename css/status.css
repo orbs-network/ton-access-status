@@ -104,6 +104,10 @@ a:active {
     background-color: #d55;
 }
 
+.mngr.warn {
+    background-color: #d9a441;
+}
+
 .alert {
     display: flex;
     flex-direction: column;

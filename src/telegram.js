@@ -1,12 +1,11 @@
 const axios = require('axios');
 
-// Define the bot token and chat ID of your Telegram channel
-const botToken = process.env.YOUR_BOT_TOKEN;
-const chatId = process.env.YOUR_CHANNEL_ID;
-
 // Function to send a message to the Telegram channel
 async function sendMessageToTelegram(message) {
-  if (!botToken.length || !chatId.length) {
+  // read at call time so dotenv load order doesn't matter
+  const botToken = process.env.YOUR_BOT_TOKEN;
+  const chatId = process.env.YOUR_CHANNEL_ID;
+  if (!botToken || !chatId) {
     return console.error('telegram botToken and chatId are invalid. message wont send')
   }
   try {

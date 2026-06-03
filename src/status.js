@@ -2,7 +2,7 @@ const axios = require('axios');
 const sendMessageToTelegram = require('./telegram')
 const Alert = require('./alert')
 
-require('dotenv').config() // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
+// dotenv is loaded by index.js before this module is required
 
 const HOST = 'https://ton.access.orbs.network';
 
@@ -45,6 +45,10 @@ class Status {
         this.data = {}
         this.tickIndex = 0;
         this.needUpdate = false;
+        this.updating = false;
+        // de-bounce: per (node Ip + unit name) count of consecutive falsy mngrHealth readings
+        this.healthStreaks = new Map();
+        this.HEALTH_FAIL_THRESHOLD = 3;
         this.edgeSvcUrl = `https://api.fastly.com/service/${process.env.FASTLY_SERVICE_ID}`;
 
         this.edgeHeaders = {
@@ -88,18 +92,20 @@ class Status {
     //////////////////////////////////////////////////
     async updateGetLoop() {
         setInterval(async () => {
-            //while (true) {        
-            if (this.needUpdate) {
-                try {
-                    this.needUpdate = false;
-                    await this.update();
-                    //this.data = require('../status-mock.json');
-                }
-                catch (e) {
-                    console.error('updateLoop', e);
-                    this.data.error = e.message;
-                    this.data.errorTime = Date.now();
-                }
+            if (!this.needUpdate) return;
+            if (this.updating) return;
+            this.updating = true;
+            this.needUpdate = false;
+            try {
+                await this.update();
+            }
+            catch (e) {
+                console.error('updateLoop', e);
+                this.data.error = e.message;
+                this.data.errorTime = Date.now();
+            }
+            finally {
+                this.updating = false;
             }
         }, 1000);
     }
@@ -112,10 +118,25 @@ class Status {
             const resp = await axios.get(url, { timeout: AXIOS_TIMEOUT });
             if (resp.status === 200) {
                 node.mngr = resp.data;
-                // update health in units
+                // update health in units (raw + de-bounced display state)
                 for (let unit of node.units) {
-                    // for UI                    
+                    // for UI
                     unit.mngrHealth = node.mngr.health.hasOwnProperty(unit.name) ? node.mngr.health[unit.name] : "missing";
+
+                    const streakKey = `${node.Ip}:${unit.name}`;
+                    if (unit.mngrHealth === 'missing') {
+                        unit.displayHealth = 'missing';
+                        // don't touch the streak for missing entries
+                    } else if (unit.mngrHealth) {
+                        this.healthStreaks.set(streakKey, 0);
+                        unit.displayHealth = 'pass';
+                        unit.failStreak = 0;
+                    } else {
+                        const streak = (this.healthStreaks.get(streakKey) || 0) + 1;
+                        this.healthStreaks.set(streakKey, streak);
+                        unit.failStreak = streak;
+                        unit.displayHealth = streak >= this.HEALTH_FAIL_THRESHOLD ? 'fail' : 'warn';
+                    }
                 }
             }
             else {
@@ -189,14 +210,16 @@ class Status {
             if (err.code === 'ECONNABORTED') {
                 console.error('Request timeout', url, AXIOS_TIMEOUT);
                 unit.error = `timeout ${AXIOS_TIMEOUT} ms`;
+            } else if (err.response) {
+                // server replied with a non-2xx status (e.g. 404, 500)
+                console.error('Request bad status', err.response.status, url);
+                unit.status = err.response.status;
+                unit.error = `status ${err.response.status}`;
+            } else {
+                // network-level error (ENOTFOUND, ECONNRESET, ECONNREFUSED, ...) or anything else
+                console.error('Request error', err.code || err.message, url);
+                unit.error = err.code || err.message || 'unknown error';
             }
-            // else {
-            //     // handle error
-            //     if (url.indexOf('ton-not-exist') == -1) { // filter out purposely error
-            //         console.error('Request error', err.message, url);
-            //     }
-            //     unit.error = err.message;
-            // }
         }
         // elapsed and benchmark
         var endTime = performance.now();
@@ -212,12 +235,19 @@ class Status {
             unit.status = resp.status;
             unit.data = resp.data;
 
-            // per protocol valid data
-            if (name.slice(0, 2) === 'v2') {
-                unit.seqno = unit.data.result.last.seqno;
-            }
-            else if (name.slice(0, 2) === 'v4') {
-                unit.seqno = unit.data.last.seqno;
+            // per protocol valid data — guarded so a malformed body doesn't throw past the catch
+            try {
+                if (name.slice(0, 2) === 'v2') {
+                    unit.seqno = unit.data?.result?.last?.seqno;
+                }
+                else if (name.slice(0, 2) === 'v4') {
+                    unit.seqno = unit.data?.last?.seqno;
+                }
+                if (unit.seqno === undefined) {
+                    unit.error = 'malformed response: missing seqno';
+                }
+            } catch (e) {
+                unit.error = `parse error: ${e.message}`;
             }
         }
         return unit;
@@ -227,9 +257,18 @@ class Status {
         // create and update units for this node
         node.units = []
         for (const name in units) {
-            const unit = await this.updateUnit(node, name, units[name]).catch(e => {
-                console.error('updateUnit', e);
+            let unit = await this.updateUnit(node, name, units[name]).catch(e => {
+                console.error('updateUnit threw past internal handlers', name, e);
+                return null;
             });
+            // fallback stub if updateUnit somehow returned nothing — keeps node.units shape consistent
+            if (!unit) {
+                unit = {
+                    name: name,
+                    url: HOST + '/' + node.NodeId + units[name],
+                    error: 'updateUnit failed',
+                };
+            }
             node.units.push(unit);
         }
 
@@ -353,7 +392,10 @@ class Status {
         // trigger alerts
         if (data.nodes.length) {
             await this.alert.checkProtonetAccross(benchmark, data);
-            await this.alert.checkConsistNodesApi(data.nodes);
+            // only if it fails, meaning none of the nodes has empty nodes list
+            if (await this.alert.checkEmptyNodesApi(data.nodes)) {
+                await this.alert.checkConsistNodesApi(data.nodes);
+            }
             data.alert = this.alert.status();
         }
 
